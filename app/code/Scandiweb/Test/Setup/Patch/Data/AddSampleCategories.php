@@ -8,27 +8,28 @@ use Magento\Framework\Setup\Patch\DataPatchInterface;
 
 class AddSampleCategories implements DataPatchInterface
 {
-    private const CATEGORIES = ['women' => 'Women', 'men' => 'Men', 'kids' => 'Kids'];
+    protected const CATEGORIES = ['women' => 'Women', 'men' => 'Men', 'kids' => 'Kids'];
 
 	/**
      * @var CategorySetup
      */
-    protected $categorySetup;
+    protected CategorySetup $categorySetup;
 
     /**
      * @var StoreManagerInterface
      */
-    protected $storeManager;
+    protected StoreManagerInterface $storeManager;
 
     /**
      * @var CategoryCollectionFactory
      */
-    protected $categoryCollectionFactory;
+    protected CategoryCollectionFactory $categoryCollectionFactory;
 
-	/**
+    /**
      * AddSampleCategories constructor.
      * @param CategorySetup $categorySetup
-	 * @param CategoryCollectionFactory $categoryCollectionFactory
+     * @param StoreManagerInterface $storeManager
+     * @param CategoryCollectionFactory $categoryCollectionFactory
      */
     public function __construct(
         CategorySetup $categorySetup,
@@ -40,7 +41,10 @@ class AddSampleCategories implements DataPatchInterface
 		$this->categoryCollectionFactory = $categoryCollectionFactory;
 	}
 
-    public function apply()
+    /**
+     * @return void
+     */
+    public function apply(): void
 	{
         $rootCategoryId = $this->storeManager->getStore()->getRootCategoryId();
         $rootCategory = $this->categoryCollectionFactory->create()->addAttributeToFilter('entity_id', ['eq' => $rootCategoryId])->getFirstItem();

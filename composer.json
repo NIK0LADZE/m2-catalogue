@@ -14,7 +14,8 @@
             "magento/composer-dependency-version-audit-plugin": true,
             "magento/composer-root-update-plugin": true,
             "magento/inventory-composer-installer": true,
-            "magento/magento-composer-installer": true
+            "magento/magento-composer-installer": true,
+            "hirak/prestissimo": false
         },
         "preferred-install": "dist",
         "sort-packages": true

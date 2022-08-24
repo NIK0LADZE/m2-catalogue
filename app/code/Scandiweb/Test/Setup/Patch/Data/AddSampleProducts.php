@@ -9,7 +9,6 @@ use Magento\Catalog\Model\Product\Attribute\Source\Status;
 use Magento\Catalog\Model\Product\Type;
 use Magento\Catalog\Model\Product\Visibility;
 use Magento\Eav\Setup\EavSetup;
-use Magento\Framework\Setup\ModuleDataSetupInterface;
 use Magento\Framework\Setup\Patch\DataPatchInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\Catalog\Model\ResourceModel\Category\CollectionFactory as CategoryCollectionFactory;
@@ -17,7 +16,7 @@ use Magento\Catalog\Api\CategoryLinkManagementInterface;
 
 class AddSampleProducts implements DataPatchInterface
 {
-    private const PRODUCTS = [
+    protected const PRODUCTS = [
         'cool-shoes' => ['price' => '59.79', 'quantity' => '80', 'name' => 'Cool shoes', 'categories' => ['Women', 'Kids']],
         'cool-shirt' => ['price' => '89.99', 'quantity' => '65', 'name' => 'Cool shirt', 'categories' => ['Men']],
         'cool-jacket' => ['price' => '259.79', 'quantity' => '15', 'name' => 'Cool jacket', 'categories' => ['Men', 'Kids']],
@@ -29,57 +28,51 @@ class AddSampleProducts implements DataPatchInterface
     ];
 
 	/**
-     * @var ModuleDataSetupInterface
-     */
-    private $setup;
-
-	/**
      * @var ProductInterfaceFactory
      */
-    private $productInterfaceFactory;
+    protected ProductInterfaceFactory $productInterfaceFactory;
 
 	/**
      * @var ProductRepositoryInterface
      */
-    private $productRepository;
+    protected ProductRepositoryInterface $productRepository;
 
 	/**
      * @var State
      */
-    private $appState;
+    protected State $appState;
 
 	/**
      * @var EavSetup
      */
-    private $eavSetup;
+    protected EavSetup $eavSetup;
 
 	/**
      * @var StoreManagerInterface
      */
-    private $storeManager;
+    protected StoreManagerInterface $storeManager;
 
 	/**
      * @var CategoryLinkManagementInterface
      */
-    private $categoryLink;
+    protected CategoryLinkManagementInterface $categoryLink;
 
 	/**
      * @var CategoryCollectionFactory
      */
-    private $categoryCollectionFactory;
+    protected CategoryCollectionFactory $categoryCollectionFactory;
 
-	/**
+    /**
      * AddSampleProducts constructor.
-     * @param ModuleDataSetupInterface $setup
      * @param ProductInterfaceFactory $productInterfaceFactory
      * @param ProductRepositoryInterface $productRepository
      * @param State $appState
+     * @param StoreManagerInterface $storeManager
      * @param EavSetup $eavSetup
-	 * @param CategoryLinkManagementInterface $categoryLink
-	 * @param CategoryCollectionFactory $categoryCollectionFactory
+     * @param CategoryLinkManagementInterface $categoryLink
+     * @param CategoryCollectionFactory $categoryCollectionFactory
      */
     public function __construct(
-		ModuleDataSetupInterface $setup,
 		ProductInterfaceFactory $productInterfaceFactory,
 		ProductRepositoryInterface $productRepository,
 		State $appState,
@@ -91,20 +84,25 @@ class AddSampleProducts implements DataPatchInterface
 		$this->appState = $appState;
 		$this->productInterfaceFactory = $productInterfaceFactory;
 		$this->productRepository = $productRepository;
-		$this->setup = $setup;
 		$this->eavSetup = $eavSetup;
 		$this->storeManager = $storeManager;
 		$this->categoryLink = $categoryLink;
 		$this->categoryCollectionFactory = $categoryCollectionFactory;
 	}
 
-	public function apply()
+    /**
+     * @return void
+     */
+	public function apply(): void
     {
         $this->appState->emulateAreaCode('adminhtml', [$this, 'execute']);
     }
 
-    public function execute()
-	{
+    /**
+     * @return void
+     */
+    public function execute(): void
+    {
         foreach (self::PRODUCTS as $sku => $data) {
             $product = $this->productInterfaceFactory->create();
 
@@ -115,23 +113,24 @@ class AddSampleProducts implements DataPatchInterface
             $attributeSetId = $this->eavSetup->getAttributeSetId(Product::ENTITY, 'Default');
 
             $product->setTypeId(Type::TYPE_SIMPLE)
-            ->setAttributeSetId($attributeSetId)
-            ->setName($data['name'])
-            ->setSku($sku)
-            ->setUrlKey($sku)
-            ->setPrice($data['price'])
-            ->setVisibility(Visibility::VISIBILITY_BOTH)
-            ->setStatus(Status::STATUS_ENABLED);
+                ->setAttributeSetId($attributeSetId)
+                ->setName($data['name'])
+                ->setSku($sku)
+                ->setUrlKey($sku)
+                ->setPrice($data['price'])
+                ->setVisibility(Visibility::VISIBILITY_BOTH)
+                ->setStatus(Status::STATUS_ENABLED);
 
             $websiteIDs = [$this->storeManager->getStore()->getWebsiteId()];
 
-            $product->setWebsiteIds($websiteIDs);
-
-            $product->setStockData(['use_config_manage_stock' => 1, 'is_qty_decimal' => 0, 'is_in_stock' => 1]);
-
-            $product->setQuantityAndStockStatus(['qty' => $data['quantity'], 'is_in_stock' => 1]);
+            $product->setWebsiteIds($websiteIDs)
+                ->setStockData(['use_config_manage_stock' => 1, 'is_qty_decimal' => 0, 'is_in_stock' => 1])
+                ->setQuantityAndStockStatus(['qty' => $data['quantity'], 'is_in_stock' => 1]);
 
             $product = $this->productRepository->save($product);
+
+
+
 
             $categoryIds = $this->categoryCollectionFactory->create()
                 ->addAttributeToFilter('name', ['in' => $data['categories']])
