@@ -11,23 +11,26 @@ use Magento\Catalog\Model\Product\Visibility;
 use Magento\Eav\Setup\EavSetup;
 use Magento\Framework\Setup\Patch\DataPatchInterface;
 use Magento\Store\Model\StoreManagerInterface;
+use Magento\InventoryApi\Api\Data\SourceItemInterface;
+use Magento\InventoryApi\Api\Data\SourceItemInterfaceFactory;
+use Magento\InventoryApi\Api\SourceItemsSaveInterface;
 use Magento\Catalog\Model\ResourceModel\Category\CollectionFactory as CategoryCollectionFactory;
 use Magento\Catalog\Api\CategoryLinkManagementInterface;
 
 class AddSampleProducts implements DataPatchInterface
 {
     protected const PRODUCTS = [
-        'cool-shoes' => ['price' => '59.79', 'quantity' => '80', 'name' => 'Cool shoes', 'categories' => ['Women', 'Kids']],
-        'cool-shirt' => ['price' => '89.99', 'quantity' => '65', 'name' => 'Cool shirt', 'categories' => ['Men']],
-        'cool-jacket' => ['price' => '259.79', 'quantity' => '15', 'name' => 'Cool jacket', 'categories' => ['Men', 'Kids']],
-        'cool-sunglasses' => ['price' => '129.79', 'quantity' => '45', 'name' => 'Cool sunglasses', 'categories' => ['Kids']],
-        'cool-skirt' => ['price' => '125.49', 'quantity' => '65', 'name' => 'Cool skirt', 'categories' => ['Women']],
-        'cool-hat' => ['price' => '49.79', 'quantity' => '70', 'name' => 'Cool hat', 'categories' => ['Women', 'Men', 'Kids']],
-        'cool-shorts' => ['price' => '85.19', 'quantity' => '55', 'name' => 'Cool shorts', 'categories' => ['Men', 'Kids']],
-        'cool-sneakers' => ['price' => '359.79', 'quantity' => '40', 'name' => 'Cool sneakers', 'categories' => ['Women', 'Men', 'Kids']]
+        'cool-shoes' => ['price' => '59.79', 'quantity' => 80, 'name' => 'Cool shoes', 'categories' => ['Women', 'Kids']],
+        'cool-shirt' => ['price' => '89.99', 'quantity' => 65, 'name' => 'Cool shirt', 'categories' => ['Men']],
+        'cool-jacket' => ['price' => '259.79', 'quantity' => 15, 'name' => 'Cool jacket', 'categories' => ['Men', 'Kids']],
+        'cool-sunglasses' => ['price' => '129.79', 'quantity' => 45, 'name' => 'Cool sunglasses', 'categories' => ['Kids']],
+        'cool-skirt' => ['price' => '125.49', 'quantity' => 65, 'name' => 'Cool skirt', 'categories' => ['Women']],
+        'cool-hat' => ['price' => '49.79', 'quantity' => 70, 'name' => 'Cool hat', 'categories' => ['Women', 'Men', 'Kids']],
+        'cool-shorts' => ['price' => '85.19', 'quantity' => 55, 'name' => 'Cool shorts', 'categories' => ['Men', 'Kids']],
+        'cool-sneakers' => ['price' => '359.79', 'quantity' => 40, 'name' => 'Cool sneakers', 'categories' => ['Women', 'Men', 'Kids']]
     ];
 
-	/**
+	/**Scandiweb\Test\Setup\Patch\Data\AddSampleCategories
      * @var ProductInterfaceFactory
      */
     protected ProductInterfaceFactory $productInterfaceFactory;
@@ -52,6 +55,16 @@ class AddSampleProducts implements DataPatchInterface
      */
     protected StoreManagerInterface $storeManager;
 
+    /**
+     * @var SourceItemInterfaceFactory
+     */
+    protected SourceItemInterfaceFactory $sourceItemFactory;
+
+    /**
+     * @var SourceItemsSaveInterface
+     */
+    protected SourceItemsSaveInterface $sourceItemsSaveInterface;
+
 	/**
      * @var CategoryLinkManagementInterface
      */
@@ -68,6 +81,8 @@ class AddSampleProducts implements DataPatchInterface
      * @param ProductRepositoryInterface $productRepository
      * @param State $appState
      * @param StoreManagerInterface $storeManager
+     * @param SourceItemInterfaceFactory $sourceItemFactory
+     * @param SourceItemsSaveInterface $sourceItemsSaveInterface
      * @param EavSetup $eavSetup
      * @param CategoryLinkManagementInterface $categoryLink
      * @param CategoryCollectionFactory $categoryCollectionFactory
@@ -77,6 +92,8 @@ class AddSampleProducts implements DataPatchInterface
 		ProductRepositoryInterface $productRepository,
 		State $appState,
 		StoreManagerInterface $storeManager,
+        SourceItemInterfaceFactory $sourceItemFactory,
+        SourceItemsSaveInterface $sourceItemsSaveInterface,
 		EavSetup $eavSetup,
 		CategoryLinkManagementInterface $categoryLink,
 		CategoryCollectionFactory $categoryCollectionFactory
@@ -86,6 +103,8 @@ class AddSampleProducts implements DataPatchInterface
 		$this->productRepository = $productRepository;
 		$this->eavSetup = $eavSetup;
 		$this->storeManager = $storeManager;
+        $this->sourceItemFactory = $sourceItemFactory;
+        $this->sourceItemsSaveInterface = $sourceItemsSaveInterface;
 		$this->categoryLink = $categoryLink;
 		$this->categoryCollectionFactory = $categoryCollectionFactory;
 	}
@@ -111,25 +130,28 @@ class AddSampleProducts implements DataPatchInterface
             }
 
             $attributeSetId = $this->eavSetup->getAttributeSetId(Product::ENTITY, 'Default');
+            $websiteIDs = [$this->storeManager->getStore()->getWebsiteId()];
 
             $product->setTypeId(Type::TYPE_SIMPLE)
+                ->setWebsiteIds($websiteIDs)
                 ->setAttributeSetId($attributeSetId)
                 ->setName($data['name'])
                 ->setSku($sku)
                 ->setUrlKey($sku)
                 ->setPrice($data['price'])
                 ->setVisibility(Visibility::VISIBILITY_BOTH)
-                ->setStatus(Status::STATUS_ENABLED);
-
-            $websiteIDs = [$this->storeManager->getStore()->getWebsiteId()];
-
-            $product->setWebsiteIds($websiteIDs)
-                ->setStockData(['use_config_manage_stock' => 1, 'is_qty_decimal' => 0, 'is_in_stock' => 1])
-                ->setQuantityAndStockStatus(['qty' => $data['quantity'], 'is_in_stock' => 1]);
-
+                ->setStatus(Status::STATUS_ENABLED)
+                ->setStockData(['use_config_manage_stock' => 1, 'is_qty_decimal' => 0, 'is_in_stock' => 1]);
             $product = $this->productRepository->save($product);
 
+            // As I investigated all the methods below except create() return void, hence giving an error when chained together
+            $sourceItem = $this->sourceItemFactory->create();
+            $sourceItem->setSourceCode('default');
+            $sourceItem->setQuantity($data['quantity']);
+            $sourceItem->setSku($product->getSku());
+            $sourceItem->setStatus(SourceItemInterface::STATUS_IN_STOCK);
 
+            $this->sourceItemsSaveInterface->execute([$sourceItem]);
 
 
             $categoryIds = $this->categoryCollectionFactory->create()
